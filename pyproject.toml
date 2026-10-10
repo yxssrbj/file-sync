@@ -1,0 +1,20 @@
+[project]
+name = "file-sync"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "yxssrbj", email = "s099383@student.tu.kielce.pl" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.143.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "python-multipart>=0.0.32",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
