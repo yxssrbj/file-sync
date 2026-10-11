@@ -1,17 +1,12 @@
-import tempfile
 from pathlib import Path
 from inventory import scan_inventory
-from sync import compare_hash
-import shutil
 import httpx
 
 
-source_root = Path("demo/source").resolve()
-server_root = Path("demo/server-storage").resolve()
+source_root = Path(__file__).resolve().parent / "demo" / "source"
 
 
 client_inventory = scan_inventory(source_root)
-server_inventory = scan_inventory(server_root)
 
 inventory_by_path = {item["path"]: item for item in client_inventory}
 

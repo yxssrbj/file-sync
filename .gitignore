@@ -9,3 +9,4 @@ wheels/
 # Virtual environments
 .venv
 .venv-blocked-3.13/
+src/demo
