@@ -50,14 +50,66 @@ Tailscale Serve can proxy a local service to a tailnet and requires HTTPS to be 
 
 ## Implementation order
 
-1. Add separate authentication for the sync client and phone session; protect existing inventory and upload endpoints before making the service remotely reachable.
-2. Add request limits, upload limits, timeouts, and login throttling.
-3. Add the authenticated phone browse/download/upload page with the path and response rules above.
-4. Configure the Tailscale-only HTTPS path and verify the FastAPI listener remains on loopback.
-5. Review storage permissions, disk encryption, backup procedure, and secret handling.
-6. Verify access control, path validation, size limits, conflict behavior, and remote connectivity with negative and positive checks.
+Build and verify one step at a time. After each step, show the changed files and verification results, then stop for the user's review. Do not begin the next step until the user says to continue.
 
-Each implementation step will be delivered separately. After each step, the user reviews the changes and decides whether to continue. No later step begins until the user explicitly continues.
+### Step 1: Make server startup predictable
+
+- Remove `sync.py`'s import-time scan of `demo/source`; importing the comparison helper must not scan a folder or depend on the current working directory.
+- Put server configuration in one clear place while keeping the service bound to loopback.
+- **Checkpoint:** start the API from the repository root and the `src` directory; both should use the same Desktop storage path and should not scan the client source.
+
+### Step 2: Protect the existing sync API
+
+- Add a dedicated random bearer token for the laptop sync client.
+- Require it on both `/api/inventory` and `/api/uploadfile`; update the client to send the token from its environment.
+- Keep the token out of source control and logs.
+- **Checkpoint:** requests with no token or a wrong token fail; a valid token completes the existing sync and the next inventory check reports files unchanged.
+
+### Step 3: Bound existing sync requests
+
+- Limit inventory entry count and JSON body size.
+- Limit upload size and request duration, and reject oversized uploads without replacing a stored file.
+- **Checkpoint:** normal sync still works; oversized inventory and upload requests are rejected; interrupted or rejected uploads leave no partial destination file.
+
+### Step 4: Add phone login and session protection
+
+- Add password-based login with a stored password hash, logout, session expiry, and login throttling.
+- Use `Secure`, `HttpOnly`, and `SameSite=Lax` session cookies. Require CSRF protection for state-changing browser actions.
+- **Checkpoint:** correct login succeeds; wrong credentials and expired sessions fail; cookie attributes and CSRF token validation are verified; credentials do not appear in logs or tracked files.
+
+### Step 5: Add an authenticated file listing
+
+- Add a phone-friendly page that lists relative paths and useful metadata without exposing absolute server paths.
+- Require a phone session. Do not add upload or delete controls in this step.
+- **Checkpoint:** an authenticated phone session sees stored files; unauthenticated requests are rejected; traversal-like input cannot reveal files outside storage.
+
+### Step 6: Add safe downloads
+
+- Add a download route that resolves paths beneath storage and rejects traversal and symlink escapes.
+- Send files as attachments with `X-Content-Type-Options: nosniff`; do not render HTML or SVG from storage as trusted pages.
+- **Checkpoint:** valid files download; invalid paths fail; an HTML test file downloads as an attachment instead of executing in the app origin.
+
+### Step 7: Add phone uploads in isolation
+
+- Let an authenticated phone session upload into the flat `phone-uploads/` directory only.
+- Sanitize filenames, reject collisions, enforce the configured size limit, verify SHA-256, and use temporary files plus atomic replacement after validation.
+- **Checkpoint:** a small file appears in `phone-uploads/`; collision, traversal, oversized, invalid-hash, invalid-CSRF, and unauthenticated requests fail without changing existing files.
+
+### Step 8: Enable private remote access
+
+- Keep FastAPI bound to loopback and proxy it through Tailscale Serve over HTTPS.
+- Restrict the tailnet to the user's devices and the service port. Do not enable Funnel or router port forwarding.
+- **Checkpoint:** the authenticated phone can use the app from a different network; the service is not reachable from the public internet or directly from the LAN listener.
+
+### Step 9: Review laptop storage protection
+
+- Verify the storage directory is accessible only to the user's Windows account, check disk encryption status, and establish a separate backup procedure.
+- **Checkpoint:** record the permissions, encryption status, and backup location; do not claim the files are protected at rest until encryption is confirmed.
+
+### Step 10: Run the end-to-end security checklist
+
+- Re-run the sync unchanged/update cases and all authentication, path, size, collision, download-header, and remote-access checks.
+- **Checkpoint:** every acceptance criterion below passes; report any remaining limitation before considering the security work complete.
 
 ## Acceptance criteria
 
@@ -71,3 +123,4 @@ Each implementation step will be delivered separately. After each step, the user
 - The service is reachable from the user's authorized phone over Tailscale HTTPS, but is not exposed through public router ports or Tailscale Funnel.
 - Credentials are absent from source control and logs.
 - Existing hash-based sync behavior continues to identify unchanged files correctly.
+- Storage permissions, disk encryption status, and backup location are recorded accurately.
