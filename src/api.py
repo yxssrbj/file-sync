@@ -8,17 +8,12 @@ from typing import Annotated
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from config import STORAGE_ROOT
 from inventory import scan_inventory
 from sync import compare_hash
 
 
 app = FastAPI()
-STORAGE_ROOT = Path(
-    os.environ.get(
-        "FILE_SYNC_STORAGE",
-        str(Path.home() / "Desktop" / "file-sync-storage"),
-    )
-).expanduser()
 
 
 class FileReq(BaseModel):

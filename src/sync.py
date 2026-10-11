@@ -1,16 +1,6 @@
-from pathlib import Path
-from inventory import scan_inventory
-root = Path("demo/source").resolve()
-
-
-## this is the inventory we compare against before deciding wether to transfer or not
-inventory = scan_inventory(root)
-
-
-## compare the server's inventory hashes with the actual folder/file hash
-
-
-def compare_hash(client_inventory, server_inventory):
+def compare_hash(
+    client_inventory: list[dict], server_inventory: list[dict]
+) -> dict[str, list[str]]:
     upload = []
     unchanged = []
     server_by_path = {
