@@ -3,7 +3,6 @@ from pathlib import Path
 from inventory import scan_inventory
 from sync import compare_hash
 import shutil
-import requests
 import httpx
 
 
@@ -19,7 +18,7 @@ inventory_by_path = {item["path"]: item for item in client_inventory}
 def send_files(client_inventory):
 
     url = 'http://127.0.0.1:8000/api'
-    comparison_result = requests.post(f"{url}/inventory", json=client_inventory).json()
+    comparison_result = httpx.post(f"{url}/inventory", json=client_inventory).json()
     print(comparison_result)
 
     if len(comparison_result['upload']) == 0:
